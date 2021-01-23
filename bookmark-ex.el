@@ -2,7 +2,7 @@
 ;; Copyright (C) 2021 fubuki
 
 ;; Author: fubuki@frill.org
-;; Version: @(#)$Revision: 1.1 $$Name:  $
+;; Version: @(#)$Revision: 1.2 $$Name:  $
 ;; Keywords: bookmark, matching
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -56,6 +56,9 @@ then make `bookmark-mark-ring'."
           (bookmark-default-handler a)
           (setq bookmark-mark-ring
                 (cons (copy-marker (point)) bookmark-mark-ring)))))
+    (and (boundp 'bookmark-alist-modification-count)
+         (setq bookmark-alist-modification-count
+               (1+ bookmark-alist-modification-count)))
     (setq bookmark-alist
           (cons last (append (reverse common) (reverse others))))))
 
@@ -69,20 +72,35 @@ then make `bookmark-mark-ring'."
             ln (line-number-at-pos)))
     (insert (format "%s:%s" file ln))))
 
-(define-key bookmark-minibuffer-read-name-map
-  "\C-c#" 'bookmark-file-name+line-number)
+(defvar bookmark-minibuffer-read-name-ex-map
+  (let ((map  (make-sparse-keymap))
+        (menu (make-sparse-keymap "minibuf")))
+    (set-keymap-parent map (copy-keymap minibuffer-local-map))
+    (define-key map "\C-w" 'bookmark-yank-word)
+    (define-key map "\C-c#" 'bookmark-file-name+line-number)
+    map))
 
 (define-key-after
-  (lookup-key bookmark-minibuffer-read-name-map [menu-bar minibuf])
+  (lookup-key bookmark-minibuffer-read-name-ex-map [menu-bar minibuf])
   [filenamelinenumber]
   '("Insert Filename:Linenumber" . bookmark-file-name+line-number)
   'isearch-forward)
 
 (define-key-after
-  (lookup-key bookmark-minibuffer-read-name-map [menu-bar minibuf])
+  (lookup-key bookmark-minibuffer-read-name-ex-map [menu-bar minibuf])
   [yankword]
   '("Yank word" . bookmark-yank-word)
   'isearch-forward)
+
+(define-key-after
+  (lookup-key bookmark-minibuffer-read-name-ex-map [menu-bar minibuf])
+  [rem1] '("--") 'isearch-forward)
+
+(define-key-after
+  (lookup-key bookmark-minibuffer-read-name-ex-map [menu-bar minibuf])
+  [rem2] '("--") 'filenamelinenumber)
+
+(setq bookmark-minibuffer-read-name-map bookmark-minibuffer-read-name-ex-map)
 
 ;; bookmark-set-name-wap part.
 (defun bookmark-set-name-wap (bookmark-name-or-record newname)
@@ -117,9 +135,15 @@ then make `bookmark-mark-ring'."
             0 (length (car a)) '(face bookmark-directory directory t) (car a))))
     (if bookmark-sort-flag
         (sort seq (function (lambda (x y) (string-lessp (car x) (car y)))))
-      seq)))
+      (if (<= 28 emacs-major-version)
+          (reverse seq)
+        seq))))
 
 (advice-add 'bookmark-maybe-sort-alist :override 'bookmark-maybe-sort-alist-wap)
+
+(if (<= 28 emacs-major-version)
+    (add-hook 'bookmark-bmenu-mode-hook
+              #'(lambda () (setq tabulated-list-sort-key nil))))
 
 ;; bookmark-bmenu-mode-map add part.
 (defun bookmark-next-directory (arg)
