@@ -1,8 +1,8 @@
 ;;; bookmark-ex.el -*- coding: utf-8-emacs -*-
-;; Copyright (C) 2021 fubuki
+;; Copyright (C) 2021, 2022 fubuki
 
 ;; Author: fubuki@frill.org
-;; Version: @(#)$Revision: 1.2 $$Name:  $
+;; Version: @(#)$Revision: 1.10 $$Name:  $
 ;; Keywords: bookmark, matching
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -28,11 +28,13 @@
 ;;; Change Log:
 
 ;;; Code:
-
 (require 'bookmark)
 (defvar bookmark-mark-ring nil)
 (setq bookmark-sort-flag nil)
 (add-hook 'bookmark-after-jump-hook 'bookmark-last-visit-up)
+
+(when (boundp 'show-marks-add-mark-ring)
+  (setq show-marks-add-mark-ring '(bookmark-mark-ring global-mark-ring)))
 
 (defun bookmark-last-visit-up ()
   "last visit bookmark move to top And collect same files.
@@ -135,7 +137,7 @@ then make `bookmark-mark-ring'."
             0 (length (car a)) '(face bookmark-directory directory t) (car a))))
     (if bookmark-sort-flag
         (sort seq (function (lambda (x y) (string-lessp (car x) (car y)))))
-      (if (<= 28 emacs-major-version)
+      (if (= 28 emacs-major-version)
           (reverse seq)
         seq))))
 
@@ -157,9 +159,9 @@ then make `bookmark-mark-ring'."
     (text-property-search-backward 'directory t t t)))
 
 (add-hook 'bookmark-bmenu-mode-hook
-          '(lambda ()
-             (local-set-key ">" 'bookmark-next-directory)
-             (local-set-key "<" 'bookmark-previous-directory)))
+          #'(lambda ()
+              (local-set-key ">" 'bookmark-next-directory)
+              (local-set-key "<" 'bookmark-previous-directory)))
 
 ;; show-annotation open window part.
 (add-to-list 'display-buffer-alist
